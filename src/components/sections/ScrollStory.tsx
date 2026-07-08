@@ -40,25 +40,43 @@ export function ScrollStory() {
       gsap.set(card, { scale: 0.62, rotate: -8, opacity: 0.35, willChange: "transform, opacity" });
       gsap.set(stepRefs.current, { opacity: 0, y: 24, willChange: "transform, opacity" });
 
+      // One timeline "unit" per step. Each step fades in over the first 20% of its
+      // unit, stays fully visible (the "plateau") for the middle 60%, then fades out
+      // over the last 20%. Snap points sit at each plateau's center, so at rest the
+      // scroll always lands on a fully-visible, settled step — never mid-transition —
+      // which is what makes steps 1 -> 2 -> 3 read as discrete rather than a single
+      // continuous blend tied 1:1 to raw scroll distance.
+      const stepUnit = 1;
+      const stepCount = stepRefs.current.filter(Boolean).length;
+
+      const snapPoints = stepRefs.current
+        .filter(Boolean)
+        .map((_, index) => (index + 0.5) / stepCount);
+
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=200%",
+          end: "+=250%",
           scrub: true,
           pin: true,
           anticipatePin: 1,
+          snap: {
+            snapTo: snapPoints,
+            duration: 0.4,
+            ease: "power2.inOut",
+          },
         },
       });
 
-      timeline.to(card, { scale: 1, rotate: 0, opacity: 1, ease: "none", duration: 1 });
+      timeline.to(card, { scale: 1, rotate: 0, opacity: 1, ease: "none", duration: stepUnit * 0.7 }, 0);
 
       stepRefs.current.forEach((el, index) => {
         if (!el) return;
-        const at = index * 0.9;
-        timeline.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "none" }, at);
+        const start = index * stepUnit;
+        timeline.to(el, { opacity: 1, y: 0, duration: stepUnit * 0.2, ease: "none" }, start);
         if (index < stepRefs.current.length - 1) {
-          timeline.to(el, { opacity: 0, y: -24, duration: 0.4, ease: "none" }, at + 0.7);
+          timeline.to(el, { opacity: 0, y: -24, duration: stepUnit * 0.2, ease: "none" }, start + stepUnit * 0.8);
         }
       });
     }, sectionRef);
