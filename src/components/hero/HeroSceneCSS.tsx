@@ -13,6 +13,10 @@ export function HeroSceneCSS() {
 
   useEffect(() => {
     if (prefersReducedMotion) return;
+    const node = sceneRef.current;
+    if (!node) return;
+
+    let running = false;
 
     function handlePointerMove(event: PointerEvent) {
       targetRef.current = {
@@ -22,23 +26,43 @@ export function HeroSceneCSS() {
     }
 
     function tick() {
+      if (!running) return;
       const current = currentRef.current;
       const target = targetRef.current;
       current.x += (target.x - current.x) * 0.06;
       current.y += (target.y - current.y) * 0.06;
 
-      sceneRef.current?.style.setProperty("--pointer-x", current.x.toFixed(4));
-      sceneRef.current?.style.setProperty("--pointer-y", current.y.toFixed(4));
+      node!.style.setProperty("--pointer-x", current.x.toFixed(4));
+      node!.style.setProperty("--pointer-y", current.y.toFixed(4));
 
       frameRef.current = requestAnimationFrame(tick);
     }
 
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    frameRef.current = requestAnimationFrame(tick);
+    function start() {
+      if (running) return;
+      running = true;
+      window.addEventListener("pointermove", handlePointerMove, { passive: true });
+      frameRef.current = requestAnimationFrame(tick);
+    }
 
-    return () => {
+    function stop() {
+      running = false;
       window.removeEventListener("pointermove", handlePointerMove);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    }
+
+    // Only track the cursor and repaint while the hero is actually visible —
+    // otherwise this rAF loop keeps competing for frame budget during scroll
+    // through the rest of the page (the exact "unthrottled listener" jank
+    // pattern to avoid).
+    const observer = new IntersectionObserver(([entry]) => (entry.isIntersecting ? start() : stop()), {
+      threshold: 0,
+    });
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      stop();
     };
   }, [prefersReducedMotion]);
 

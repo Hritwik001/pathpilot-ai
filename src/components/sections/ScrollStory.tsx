@@ -37,16 +37,17 @@ export function ScrollStory() {
       const card = cardRef.current;
       if (!card) return;
 
-      gsap.set(card, { scale: 0.62, rotate: -8, opacity: 0.35 });
-      gsap.set(stepRefs.current, { opacity: 0, y: 24 });
+      gsap.set(card, { scale: 0.62, rotate: -8, opacity: 0.35, willChange: "transform, opacity" });
+      gsap.set(stepRefs.current, { opacity: 0, y: 24, willChange: "transform, opacity" });
 
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
           end: "+=200%",
-          scrub: 0.6,
+          scrub: true,
           pin: true,
+          anticipatePin: 1,
         },
       });
 
