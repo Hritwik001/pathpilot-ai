@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { ONBOARDING_QUESTIONS, buildProfileFromChat, mockStreamText, type ChatAnswers } from "@/lib/ai/mock";
+import type { Profile } from "@/types/profile";
 import type { ChatMessage } from "@/types/profile";
 
 function newId() {
@@ -67,9 +68,23 @@ export function ChatOnboarding({ onBack }: { onBack: () => void }) {
 
     setIsDone(true);
     await streamAssistantMessage("Got it — building your profile now.");
-    const profile = buildProfileFromChat(answersRef.current as ChatAnswers);
+
+    const finalAnswers = answersRef.current as ChatAnswers;
+    let profile: Profile;
+    try {
+      const response = await fetch("/api/onboarding/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: finalAnswers }),
+      });
+      if (!response.ok) throw new Error("chat profile request failed");
+      const data = await response.json();
+      profile = data.profile as Profile;
+    } catch {
+      profile = buildProfileFromChat(finalAnswers);
+    }
+
     setProfile(profile);
-    await new Promise((resolve) => setTimeout(resolve, 500));
     router.push("/profile");
   }
 

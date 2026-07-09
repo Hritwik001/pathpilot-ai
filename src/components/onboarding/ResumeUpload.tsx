@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { buildProfileFromResume } from "@/lib/ai/mock";
+import type { Profile } from "@/types/profile";
 
 export function ResumeUpload({ onBack }: { onBack: () => void }) {
   const router = useRouter();
@@ -14,12 +15,30 @@ export function ResumeUpload({ onBack }: { onBack: () => void }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function processFile(file: File) {
+    if (file.type !== "application/pdf") {
+      setError("That doesn't look like a PDF — try exporting your resume as one.");
+      return;
+    }
+
+    setError(null);
     setFileName(file.name);
     setIsParsing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1600));
-    const profile = buildProfileFromResume(file.name);
+
+    let profile: Profile;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/resume/parse", { method: "POST", body: formData });
+      if (!response.ok) throw new Error("resume parse request failed");
+      const data = await response.json();
+      profile = data.profile as Profile;
+    } catch {
+      profile = buildProfileFromResume(file.name);
+    }
+
     setProfile(profile);
     router.push("/profile");
   }
@@ -72,6 +91,7 @@ export function ResumeUpload({ onBack }: { onBack: () => void }) {
               Drop your resume here
             </span>
             <p className="mt-3 text-zinc-400">PDF, up to a few pages — or click to browse.</p>
+            {error && <p className="mt-4 text-sm text-rose-400">{error}</p>}
           </>
         )}
 
