@@ -25,6 +25,10 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
       duration: 1.1,
       easing: (t) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
+      // Lenis takes over scroll handling, so plain <a href="#hash"> links no
+      // longer trigger the browser's native anchor jump correctly — this
+      // built-in option makes Lenis handle them itself.
+      anchors: true,
     });
 
     instance.on("scroll", ScrollTrigger.update);
