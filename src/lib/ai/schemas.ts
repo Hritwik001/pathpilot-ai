@@ -29,3 +29,22 @@ export const ProfileSchema = z.object({
 });
 
 export type GeneratedProfile = z.infer<typeof ProfileSchema>;
+
+export const MatchBatchSchema = z.object({
+  matches: z
+    .array(
+      z.object({
+        roleTitle: z.string().describe("Must be chosen verbatim from the provided candidate pool"),
+        reasoning: z
+          .string()
+          .describe(
+            "A specific, plain-English 1-2 sentence reason this role fits, referencing the candidate's actual skills/experience — no generic filler"
+          ),
+        rank: z.number().int().min(1).describe("1 = best fit"),
+      })
+    )
+    .min(8)
+    .max(12),
+});
+
+export type GeneratedMatchBatch = z.infer<typeof MatchBatchSchema>;
