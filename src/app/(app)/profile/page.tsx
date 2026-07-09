@@ -2,15 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { useSupabaseUser } from "@/hooks/useSupabaseUser";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 
 export default function ProfilePage() {
   const profile = useOnboardingStore((state) => state.profile);
+  const { user } = useSupabaseUser();
+  const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => setHasMounted(true), []);
+
+  async function handleContinue() {
+    if (!profile) return;
+    if (user) {
+      setIsSaving(true);
+      try {
+        await fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile }),
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    router.push("/matches");
+  }
 
   if (!hasMounted) return null;
 
@@ -51,12 +73,14 @@ export default function ProfilePage() {
       </div>
 
       <div className="mt-8 flex justify-end">
-        <Link
-          href="/matches"
-          className="rounded-full bg-zinc-50 px-7 py-3.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-white"
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={isSaving}
+          className="rounded-full bg-zinc-50 px-7 py-3.5 text-sm font-medium text-zinc-950 transition-colors hover:bg-white disabled:opacity-60"
         >
-          See my matches
-        </Link>
+          {isSaving ? "Saving…" : "See my matches"}
+        </button>
       </div>
     </motion.div>
   );

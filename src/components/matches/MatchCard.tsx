@@ -3,8 +3,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMatchesStore } from "@/lib/store/matches-store";
-import type { Match } from "@/types/match";
+import { useSupabaseUser } from "@/hooks/useSupabaseUser";
+import type { Match, MatchStatus } from "@/types/match";
 import type { Profile } from "@/types/profile";
+
+function syncMatch(id: string, patch: { status?: MatchStatus; pitch?: string }) {
+  fetch(`/api/matches/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  }).catch(() => {});
+}
 
 export function MatchCard({
   match,
@@ -17,6 +26,7 @@ export function MatchCard({
 }) {
   const updateStatus = useMatchesStore((state) => state.updateStatus);
   const setPitch = useMatchesStore((state) => state.setPitch);
+  const { user } = useSupabaseUser();
 
   const [expanded, setExpanded] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
@@ -52,6 +62,7 @@ export function MatchCard({
       }
 
       setPitch(match.id, text);
+      if (user) syncMatch(match.id, { pitch: text });
     } catch {
       setStreamingPitch("Couldn't generate a pitch right now — try again in a moment.");
     } finally {
@@ -95,14 +106,20 @@ export function MatchCard({
           <>
             <button
               type="button"
-              onClick={() => updateStatus(match.id, "applied")}
+              onClick={() => {
+                updateStatus(match.id, "applied");
+                if (user) syncMatch(match.id, { status: "applied" });
+              }}
               className="rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/[0.06]"
             >
               Mark applied
             </button>
             <button
               type="button"
-              onClick={() => updateStatus(match.id, "dismissed")}
+              onClick={() => {
+                updateStatus(match.id, "dismissed");
+                if (user) syncMatch(match.id, { status: "dismissed" });
+              }}
               className="rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-white/[0.06]"
             >
               Dismiss

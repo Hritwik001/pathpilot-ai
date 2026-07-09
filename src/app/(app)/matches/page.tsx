@@ -20,7 +20,7 @@ export default function MatchesPage() {
 
   useEffect(() => setHasMounted(true), []);
 
-  async function generateMatches(excludeRoles: string[]) {
+  async function generateMatches(excludeRoles: string[], force = false) {
     if (!profile) return;
     setIsGenerating(true);
     setError(null);
@@ -28,7 +28,7 @@ export default function MatchesPage() {
       const response = await fetch("/api/matches/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, excludeRoles }),
+        body: JSON.stringify({ profile, excludeRoles, force }),
       });
       if (!response.ok) throw new Error("match generation failed");
       const data = await response.json();
@@ -44,7 +44,7 @@ export default function MatchesPage() {
     if (!hasMounted || !profile || requestedRef.current) return;
     if (matches.length === 0) {
       requestedRef.current = true;
-      generateMatches([]);
+      generateMatches([], false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMounted, profile]);
@@ -88,7 +88,7 @@ export default function MatchesPage() {
         {matches.length > 0 && !isGenerating && (
           <button
             type="button"
-            onClick={() => generateMatches(allSeenRoleTitles())}
+            onClick={() => generateMatches(allSeenRoleTitles(), true)}
             className="whitespace-nowrap rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/[0.06]"
           >
             Refresh matches
