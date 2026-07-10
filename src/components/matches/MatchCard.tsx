@@ -61,6 +61,8 @@ export function MatchCard({
         setStreamingPitch(text);
       }
 
+      if (!text.trim()) throw new Error("empty pitch stream");
+
       setPitch(match.id, text);
       if (user) syncMatch(match.id, { pitch: text });
     } catch {
