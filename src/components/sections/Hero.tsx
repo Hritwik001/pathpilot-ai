@@ -1,11 +1,11 @@
 import { RevealText } from "@/components/motion/RevealText";
 import { MagneticButton } from "@/components/motion/MagneticButton";
-import { HeroSceneCSS } from "@/components/hero/HeroSceneCSS";
+import { HeroScene } from "@/components/hero/HeroScene";
 
 export function Hero() {
   return (
     <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-28 pb-20 sm:px-10 lg:px-16">
-      <HeroSceneCSS />
+      <HeroScene />
 
       <div className="relative z-10 mx-auto grid w-full max-w-6xl gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
