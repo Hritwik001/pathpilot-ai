@@ -2,7 +2,7 @@
 
 An AI career-matching copilot. Tell it who you are — by chat or resume — and get 8-12 ranked role matches with plain-English reasoning, plus an AI-drafted pitch for your top 3. Free, fast, and never the same batch twice.
 
-**Live**: [pathpilot-ai-iota.vercel.app](https://pathpilot-ai-iota.vercel.app)
+**Live**: [pathpilot-ai-iota.vercel.app](https://pathpilot-ai-iota.vercel.app) · **Demo video**: [demo/pathpilot-ai-demo.mp4](./demo/pathpilot-ai-demo.mp4)
 
 Built as a portfolio piece to demonstrate motion/animation craft, real AI integration (not a mock), and Supabase-as-BaaS competence in one project.
 
