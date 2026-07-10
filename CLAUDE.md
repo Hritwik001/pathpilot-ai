@@ -76,7 +76,7 @@ Chat wizard (4 fixed questions, typewriter-streamed via a local mock, not AI-gen
 
 Small UX fix bundled into this phase: Lenis anchor-link bug (see above) affecting "See how it works".
 
-### 🚧 Phase 5 — Supabase auth + persistence (IN PROGRESS — this is where you're picking up)
+### 🚧 Phase 5 — Supabase auth + persistence (ALMOST DONE — only Google OAuth left, blocked on user)
 
 **What's confirmed done:**
 - Supabase project created: `pathpilot-ai`, ref `rlpchxqicnysbrcilgcz`, org `hritwik-org`. User is signed in via GitHub.
@@ -105,10 +105,12 @@ Small UX fix bundled into this phase: Lenis anchor-link bug (see above) affectin
 - **Committed and pushed** (commit `79c0f39`, "Add Supabase auth and persistence for signed-in users"). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` added to Vercel (Production + Preview), project redeployed, and verified live: `curl -X POST https://pathpilot-ai-iota.vercel.app/api/matches/generate` (no auth cookie) returns a real Gemini-generated batch with 200 — confirms the Supabase client initializes correctly in production and the anonymous fallback path works end-to-end on the live deployment, not just locally.
 
 **What's left for Phase 5:**
-1. **Enable Google OAuth provider in Supabase** (Authentication → Providers → Google) — needs a Google Cloud OAuth client ID/secret, itself created in Google Cloud Console. Needs user involvement for the account/consent-screen steps, same pattern as the Gemini API key setup. Not started — independently confirmed via `curl ".../auth/v1/authorize?provider=google&apikey=..."` returning `{"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`. Email magic-link auth works fine right now without this (confirmed via direct `/auth/v1/otp` call, 200 response) — Google is the one missing piece, not a blocker for testing the rest of the persistence flow.
-2. **Complete a real signed-in test pass** — the magic-link email was sent but never clicked (can't automate opening someone's inbox). Ask the user to click the link they received, then verify: header shows their email + History link, `/profile` → "See my matches" upserts to `profiles`, `/matches` persists a batch to Supabase and `/history` shows it, "Mark applied"/"Dismiss"/pitch generation sync via the PATCH endpoint, refreshing the page still shows matches (proves Supabase round-trip, not just localStorage).
-3. **Test RLS cross-user isolation** — create a second test account (different email/Google account), confirm it cannot see the first account's `profiles`/`matches` rows. Not started, blocked on having two real signed-in sessions.
-4. Commit all of the above to git (check `git status` — as of this checkpoint everything is written but commit state wasn't re-verified after the last edits).
+1. **Enable Google OAuth provider in Supabase** (Authentication → Providers → Google) — the ONLY remaining item, and it's genuinely blocked on the user: needs a Google Cloud OAuth client ID/secret, itself created in Google Cloud Console (account/consent-screen steps the agent cannot perform), same pattern as the Gemini API key setup. Independently confirmed still disabled via `curl ".../auth/v1/authorize?provider=google&apikey=..."` returning `{"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`. Email magic-link works fine without this.
+
+**Everything else in Phase 5 is done and verified:**
+- **Real signed-in test pass — complete.** User signed in via magic-link (had to fix two real blockers first: Supabase's default email sender is hard rate-limited by design, fixed by wiring a custom SMTP via Resend's free tier in Auth → Settings → SMTP Settings; and the first magic-link click failed because it landed in Gmail Spam, not an app bug). Once signed in, verified end-to-end **directly against the database** (not just UI): `profiles` upsert on "See my matches" (confirmed row with correct `role_interest`/`years_experience`), `matches/generate` persisted a 10-row batch to Supabase with real Gemini-generated role titles, "Refresh matches" correctly appended a second non-duplicate batch (20 rows total, no repeated role titles), "Mark applied"/"Dismiss" synced via `PATCH /api/matches/[id]` (confirmed status changed in DB), and pitch generation synced too (`has_pitch: true` confirmed in DB after streaming completed).
+- **RLS cross-user isolation — verified**, without needing a second real signup: ran `set local role authenticated; set local request.jwt.claims = '{"sub":"<uuid>","role":"authenticated"}'` in the SQL editor with a random UUID → `select count(*) from profiles/matches` both returned 0. Same query with the real signed-in user's UUID returned the correct 1 profile / 20 matches. Confirms RLS blocks non-owners and correctly allows owners — the standard Supabase-recommended way to test RLS without provisioning multiple accounts.
+- **Committed and pushed** (commit `79c0f39`, "Add Supabase auth and persistence for signed-in users"). `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` added to Vercel (Production + Preview), project redeployed, and verified live: `curl -X POST https://pathpilot-ai-iota.vercel.app/api/matches/generate` (no auth cookie) returns a real Gemini-generated batch with 200 — confirms the Supabase client initializes correctly in production and the anonymous fallback path works end-to-end on the live deployment, not just locally. Re-verified again at this checkpoint, still 200 with a fresh batch.
 
 ### ⬜ Phase 6 — Realtime processing indicator (nice-to-have, not started)
 Supabase Realtime channel broadcasting a live "AI is thinking" status during parsing/generation. Explicitly lowest priority, do last if time allows.
@@ -131,8 +133,4 @@ Walk the deployed URL end-to-end one more time after all phases land, document t
 
 ## Immediate next steps when resuming
 
-1. Check `git status` / `git diff` — commit the Phase 5 auth code if not already committed.
-2. Ask the user to click the magic-link email they received during testing (or sign in fresh) and walk the signed-in flow end to end.
-3. Set up Google OAuth provider in Supabase (needs user for the Google Cloud Console steps).
-4. Test RLS cross-user isolation with a second account.
-5. Push to GitHub, update Vercel env vars if anything changed, redeploy, retest on the live URL.
+Phase 5 is done except one item: **set up Google OAuth provider in Supabase** — needs the user to create a Google Cloud OAuth client ID/secret (Google Cloud Console account/consent-screen steps the agent cannot perform), then paste the client ID/secret into Supabase's Authentication → Providers → Google page themselves. Once that's done, either move to Phase 6 (Realtime indicator, low priority) or Phase 7 (3D hero, low priority) or go straight to Final (end-to-end verification + README).
