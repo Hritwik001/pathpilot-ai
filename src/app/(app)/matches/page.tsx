@@ -120,7 +120,7 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {error && matches.length === 0 && <p className="mt-10 text-sm text-rose-400">{error}</p>}
+      {error && <p className={matches.length === 0 ? "mt-10 text-sm text-rose-400" : "mt-4 text-sm text-rose-400"}>{error}</p>}
 
       <div className="mt-8 space-y-4">
         {matches.map((match, index) => (
