@@ -3,6 +3,7 @@ import { geminiFlash } from "@/lib/ai/gemini";
 import { MatchBatchSchema } from "@/lib/ai/schemas";
 import { buildMatchBatchPrompt } from "@/lib/ai/prompts";
 import { createClient } from "@/lib/supabase/server";
+import { createStatusReporter } from "@/lib/realtime/status";
 import type { Profile } from "@/types/profile";
 import type { Match } from "@/types/match";
 
@@ -27,11 +28,14 @@ function rowToMatch(row: MatchRow): Match {
 }
 
 export async function POST(request: Request) {
-  const { profile, excludeRoles, force } = (await request.json()) as {
+  const { profile, excludeRoles, force, statusChannel } = (await request.json()) as {
     profile: Profile;
     excludeRoles: string[];
     force?: boolean;
+    statusChannel?: string;
   };
+
+  const reporter = await createStatusReporter(statusChannel);
 
   const supabase = await createClient();
   const {
@@ -41,6 +45,7 @@ export async function POST(request: Request) {
   let finalExcludeRoles = excludeRoles ?? [];
 
   if (user) {
+    reporter.send("Checking your match history…");
     const { data: history } = await supabase.from("matches").select("role_title").eq("user_id", user.id);
     finalExcludeRoles = Array.from(new Set((history ?? []).map((row) => row.role_title as string)));
 
@@ -54,11 +59,13 @@ export async function POST(request: Request) {
         .order("rank", { ascending: true });
 
       if (todayMatches && todayMatches.length > 0) {
+        await reporter.close();
         return Response.json({ matches: (todayMatches as MatchRow[]).map(rowToMatch) });
       }
     }
   }
 
+  reporter.send("Ranking roles that fit your profile…");
   const result = await generateObject({
     model: geminiFlash,
     schema: MatchBatchSchema,
@@ -68,6 +75,7 @@ export async function POST(request: Request) {
   const generated = result.object.matches.sort((a, b) => a.rank - b.rank);
 
   if (user) {
+    reporter.send("Saving your matches…");
     const rows = generated.map((match) => ({
       user_id: user.id,
       role_title: match.roleTitle,
@@ -82,9 +90,12 @@ export async function POST(request: Request) {
       .select("id, role_title, reasoning, pitch, status, rank");
 
     if (!error && inserted) {
+      await reporter.close();
       return Response.json({ matches: (inserted as MatchRow[]).map(rowToMatch) });
     }
   }
+
+  await reporter.close();
 
   const matches: Match[] = generated.map((match) => ({
     id: crypto.randomUUID(),

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
 import { useMatchesStore } from "@/lib/store/matches-store";
+import { useStatusChannel } from "@/hooks/useStatusChannel";
 import { MatchCard } from "@/components/matches/MatchCard";
 
 export default function MatchesPage() {
@@ -12,6 +13,7 @@ export default function MatchesPage() {
   const matches = useMatchesStore((state) => state.matches);
   const setMatches = useMatchesStore((state) => state.setMatches);
   const allSeenRoleTitles = useMatchesStore((state) => state.allSeenRoleTitles);
+  const { channelId, status, resetStatus } = useStatusChannel();
 
   const [hasMounted, setHasMounted] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -24,11 +26,12 @@ export default function MatchesPage() {
     if (!profile) return;
     setIsGenerating(true);
     setError(null);
+    resetStatus();
     try {
       const response = await fetch("/api/matches/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, excludeRoles, force }),
+        body: JSON.stringify({ profile, excludeRoles, force, statusChannel: channelId }),
       });
       if (!response.ok) throw new Error("match generation failed");
       const data = await response.json();
@@ -94,6 +97,16 @@ export default function MatchesPage() {
             Refresh matches
           </button>
         )}
+        {matches.length > 0 && isGenerating && (
+          <div className="flex items-center gap-2 whitespace-nowrap text-xs text-zinc-400">
+            <motion.span
+              className="h-1.5 w-1.5 rounded-full bg-cyan-400"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+            />
+            {status ?? "Refreshing…"}
+          </div>
+        )}
       </div>
 
       {isGenerating && matches.length === 0 && (
@@ -103,7 +116,7 @@ export default function MatchesPage() {
             animate={{ opacity: [0.3, 1, 0.3] }}
             transition={{ duration: 1.2, repeat: Infinity }}
           />
-          Generating your matches…
+          {status ?? "Generating your matches…"}
         </div>
       )}
 

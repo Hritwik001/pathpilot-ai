@@ -2,23 +2,29 @@ import { generateObject } from "ai";
 import { PDFParse } from "pdf-parse";
 import { geminiFlash } from "@/lib/ai/gemini";
 import { ProfileSchema } from "@/lib/ai/schemas";
+import { createStatusReporter } from "@/lib/realtime/status";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file");
+  const channelId = formData.get("statusChannel");
 
   if (!(file instanceof File)) {
     return Response.json({ error: "No resume file provided" }, { status: 400 });
   }
 
+  const reporter = await createStatusReporter(typeof channelId === "string" ? channelId : null);
+
+  reporter.send("Reading your resume…");
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const parser = new PDFParse({ data: buffer });
   const { text } = await parser.getText();
   await parser.destroy();
 
+  reporter.send("Extracting skills and experience…");
   const result = await generateObject({
     model: geminiFlash,
     schema: ProfileSchema,
@@ -29,6 +35,8 @@ Infer total years of experience from the work history dates. Use the most senior
 Resume text:
 ${text.slice(0, 12000)}`,
   });
+
+  await reporter.close();
 
   return Response.json({ profile: { ...result.object, source: "resume" as const } });
 }

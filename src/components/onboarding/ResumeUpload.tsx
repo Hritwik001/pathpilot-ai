@@ -4,12 +4,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { useStatusChannel } from "@/hooks/useStatusChannel";
 import { buildProfileFromResume } from "@/lib/ai/mock";
 import type { Profile } from "@/types/profile";
 
 export function ResumeUpload({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const setProfile = useOnboardingStore((state) => state.setProfile);
+  const { channelId, status } = useStatusChannel();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [fileName, setFileName] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function ResumeUpload({ onBack }: { onBack: () => void }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("statusChannel", channelId);
       const response = await fetch("/api/resume/parse", { method: "POST", body: formData });
       if (!response.ok) throw new Error("resume parse request failed");
       const data = await response.json();
@@ -105,7 +108,7 @@ export function ResumeUpload({ onBack }: { onBack: () => void }) {
                   animate={{ opacity: [0.3, 1, 0.3] }}
                   transition={{ duration: 1.2, repeat: Infinity }}
                 />
-                Parsing your resume…
+                {status ?? "Parsing your resume…"}
               </div>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store/onboarding-store";
+import { useStatusChannel } from "@/hooks/useStatusChannel";
 import { ONBOARDING_QUESTIONS, buildProfileFromChat, mockStreamText, type ChatAnswers } from "@/lib/ai/mock";
 import type { Profile } from "@/types/profile";
 import type { ChatMessage } from "@/types/profile";
@@ -17,6 +18,7 @@ function newId() {
 export function ChatOnboarding({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const setProfile = useOnboardingStore((state) => state.setProfile);
+  const { channelId, status } = useStatusChannel();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -75,7 +77,7 @@ export function ChatOnboarding({ onBack }: { onBack: () => void }) {
       const response = await fetch("/api/onboarding/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: finalAnswers }),
+        body: JSON.stringify({ answers: finalAnswers, statusChannel: channelId }),
       });
       if (!response.ok) throw new Error("chat profile request failed");
       const data = await response.json();
@@ -120,6 +122,17 @@ export function ChatOnboarding({ onBack }: { onBack: () => void }) {
           ))}
         </AnimatePresence>
       </div>
+
+      {isDone && status && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
+          <motion.span
+            className="h-1.5 w-1.5 rounded-full bg-cyan-400"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+          />
+          {status}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-4 flex gap-3">
         <input
